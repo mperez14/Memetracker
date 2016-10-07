@@ -9,7 +9,7 @@ from pprint import pprint
 import urllib2
 from boilerpipe.extract import Extractor
 import string
-
+import regex as re
 
 #Database
 cnx = mysql.connector.connect(user='mperez14', password='meme', database='memetracker')
@@ -18,14 +18,16 @@ cursor = cnx.cursor()
 #store answers
 meme_arr = []
 
+#word window size
 k=3
 
 def normalize_text(text):
 	text = text.lower()	#lowercase
 
-	remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
-	text = text.translate(remove_punctuation_map)
-	#text = text.translate(None, string.punctuation)	#remove punc
+	#remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
+	#text = text.translate(remove_punctuation_map) 
+	re.sub("[^\P{P}.?!]+", "", text)
+	#print("text: "+text)
 
 
 
@@ -38,19 +40,22 @@ def parent_child_check(parent_text, parent_id):
 	parent_text = normalize_text(parent_text)	#normalize text
 
 	for comment in comment_list:
-		for index, word in enumerate(parent_text.split()):	#go through parent_text and formulate possible memes
-			possible_meme = "" #reset possible meme
-			if index >= (len(parent_text.split()) - (k-1)):	#go to last possible meme that can be constructed (stop at kth element from last)
-				break
-			for i in range(index, index+k):	#construct possible meme
-				possible_meme = possible_meme +" "+ parent_text.split()[i]
+		#for sentence in parent_text.split(".|!|?"):
+		for sentence in re.split(r'\.\n|\. |\! |\!\n|\? |\?\n', parent_text):
+			#print("sentence: "+ sentence)
+			for index, word in enumerate(sentence.split()):	#go through parent_text and formulate possible memes
+				possible_meme = "" #reset possible meme
+				if index >= (len(sentence.split()) - (k-1)):	#go to last possible meme that can be constructed (stop at kth element from last)
+					break
+				for i in range(index, index+k):	#construct possible meme
+					possible_meme = possible_meme +" "+ sentence.split()[i]
 
-			#print("poss meme: "+possible_meme+"\nBody Search: "+ comment[6]+"\n\n")
-			#check if possible meme is in comment body
-			if possible_meme in normalize_text(comment[6]):
-				#win! store off tuple <post_id, parent_id, possible_meme>
-				meme_tup = (comment[0], parent_id, possible_meme)
-				meme_arr.append(meme_tup)
+				#print("poss meme: "+possible_meme+"\nBody Search: "+ comment[6]+"\n\n")
+				#check if possible meme is in comment body
+				if possible_meme in normalize_text(comment[6]):
+					#win! store off tuple <post_id, parent_id, possible_meme>
+					meme_tup = (comment[0], parent_id, possible_meme)
+					meme_arr.append(meme_tup)
 
 		parent_child_check(comment[6], 't1_' + comment[0]) 		#recursive call
 
