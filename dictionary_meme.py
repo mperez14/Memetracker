@@ -11,6 +11,17 @@ from boilerpipe.extract import Extractor
 import string
 import regex as re
 import operator
+import json
+import os.path
+#from sklearn.feature_extraction.text import TfidTransformer
+
+
+#Check arguments
+if len(sys.argv) != 2:
+	print("Please enter argument <window size>\n")
+	sys.exit()
+
+print("arg:", sys.argv[1])
 
 #Database
 cnx = mysql.connector.connect(user='mperez14', password='meme', database='memetracker')
@@ -20,7 +31,7 @@ cursor = cnx.cursor()
 meme_arr = []
 
 #word window size
-k=3
+k=int(sys.argv[1])
 
 def normalize_text(text):
 	text = text.lower()	#lowercase
@@ -94,7 +105,7 @@ def parent_child_check(parent_text, parent_id):
 
 #Main
 #join content and posts
-cursor.execute("SELECT * FROM post INNER JOIN content on post.id = content.post_id limit 5")
+cursor.execute("SELECT * FROM post INNER JOIN content on post.id = content.post_id limit 10")
 post_list = cursor.fetchall()
 meme_dict = {}
 for post in post_list:
@@ -107,14 +118,48 @@ for post in post_list:
 	else:
 		text = u''
 	parent_child_check(text, "t3_" + post[0])
-	#meme_dict = sorted(meme_dict)
 
-print sorted(meme_dict.items(), key = operator.itemgetter(1), reverse=True)
-	#print meme_dict
-	# print("Title: " + post[2].encode('utf-8') + "\nArray: ")
-	# if not meme_arr:
-	# 	print "No common words found"
-	# else:
-	# 	#print "words found"
-	# 	for p in meme_arr: print p
-	# print("\n")
+
+
+	#if meme_dict bigger than certain # of elems, clear bottom half
+
+	max_dict_size = 1000
+	if len(meme_dict) > max_dict_size:
+		# get median val, delete all items in dict that have median or lower values
+		val_arr = []
+		for w in sorted(meme_dict, key=meme_dict.get):
+			val_arr.append(meme_dict[w])
+	 		# print w, meme_dict[w]
+	 	median = 0
+	 	if len(val_arr) > 0:	#find median
+	 		median = val_arr[len(val_arr)/2]
+	 		print "median: ", median
+	 	for x in range(1, median+1):	#remove all elements in dictionary with value less than or equal to median
+	 		meme_dict = {k: v for k, v in meme_dict.iteritems() if v != x}
+
+	 	#print "memedict: ", meme_dict
+	# 	meme_dict_list = sorted(meme_dict.items(), key = operator.itemgetter(1))
+	# 	for  x in range(max_dict_size/2):
+	# 		print(x)
+	# 		del 
+	# 	print("dict: ", meme_dict_list[0])
+	# 	for x in meme_dict_2[0]:
+	# 		#del
+	# 		print(x)
+	#meme_dict = sorted(meme_dict)
+meme_dict = sorted(meme_dict.items(), key = operator.itemgetter(1))
+print meme_dict
+
+write data to output file
+text_file = "output_memes_"+str(k)+".txt"
+if os.path.isfile(text_file):
+	#read and write
+	print("do this")
+
+else:
+	#create and write
+	with open(text_file, 'w') as outfile:
+		json.dump(meme_dict, outfile)
+
+
+
